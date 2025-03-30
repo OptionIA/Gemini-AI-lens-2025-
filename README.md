@@ -36,7 +36,7 @@ A continuación, se muestra el flujo de trabajo del sistema:
 ## 🚀 Instalación y Uso
 1. Clonar el repositorio:
    ```bash
-   git clone https://github.com/OptionIA/Gemini-AI-lens-2025/main.git
+   git clone https://github.com/OptionIA/Gemini-AI-lens-2025-/tree/main
    ```
 2. Instalar dependencias:
    ```bash
@@ -44,7 +44,7 @@ A continuación, se muestra el flujo de trabajo del sistema:
    ```
 3. Ejecutar el programa:
    ```bash
-   python src/main.py
+   python Code_Source/main.py # Change folder name, due mayus
    ```
 
 ---
