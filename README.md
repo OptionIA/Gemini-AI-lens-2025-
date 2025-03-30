@@ -32,20 +32,25 @@ A continuación, se muestra el flujo de trabajo del sistema:
 ```
 ---
 ## Notes
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-  <img src="Notes/paper%20(1).jpeg" width="200">
-  <img src="Notes/paper%20(2).jpeg" width="200">
-  <img src="Notes/paper%20(3).jpeg" width="200">
-  <img src="Notes/paper%20(4).jpeg" width="200">
-  <img src="Notes/paper%20(5).jpeg" width="200">
-  <img src="Notes/paper%20(6).jpeg" width="200">
-  <img src="Notes/paper%20(7).jpeg" width="200">
-  <img src="Notes/paper%20(8).jpeg" width="200">
-  <img src="Notes/paper%20(9).jpeg" width="200">
-  <img src="Notes/paper%20(10).jpeg" width="200">
-  <img src="Notes/paper%20(11).jpeg" width="200">
-  <img src="Notes/paper%20(12).jpeg" width="200">
-  <img src="Notes/paper%20(13).jpeg" width="200">
+### 📸 Galería de Imágenes
+
+A continuación, algunas imágenes relacionadas con el proyecto:
+
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+  <img src="Notes/paper (1).jpeg" width="200">
+  <img src="Notes/paper (2).jpeg" width="200">
+  <img src="Notes/paper (3).jpeg" width="200">
+  <img src="Notes/paper (4).jpeg" width="200">
+  <img src="Notes/paper (5).jpeg" width="200">
+  <img src="Notes/paper (6).jpeg" width="200">
+  <img src="Notes/paper (7).jpeg" width="200">
+  <img src="Notes/paper (8).jpeg" width="200">
+  <img src="Notes/paper (9).jpeg" width="200">
+  <img src="Notes/paper (10).jpeg" width="200">
+  <img src="Notes/paper (11).jpeg" width="200">
+  <img src="Notes/paper (12).jpeg" width="200">
+  <img src="Notes/paper (13).jpeg" width="200">
+</div>
 
 ---
 
