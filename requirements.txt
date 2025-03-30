@@ -1,0 +1,13 @@
+asyncio
+base64
+io
+os
+sys
+traceback
+json
+datetime
+time
+opencv-python
+pyaudio
+Pillow
+google-genai
