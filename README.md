@@ -31,7 +31,7 @@ A continuación, se muestra el flujo de trabajo del sistema:
 ├── 📄 README.md          # Este archivo
 ```
 ---
-## Galería  
+## Notes
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
   <img src="Notes/paper%20(1).jpeg" width="200">
   <img src="Notes/paper%20(2).jpeg" width="200">
