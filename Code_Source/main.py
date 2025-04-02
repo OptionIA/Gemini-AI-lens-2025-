@@ -1,4 +1,7 @@
+# 2/4/2025 V 1.1.7 [No UI Feature]
+
 import asyncio
+import platform
 import base64
 import io
 import os
@@ -28,7 +31,13 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
-CHUNK_SIZE = 2048
+CHUNK_SIZE = 1024
+
+
+
+
+
+
 
 #####################################################
 # SISTEMA DE INFORMACION USUARIO
@@ -57,12 +66,12 @@ formatted_time = now_time.strftime("%I:%M %p")
 formatted_date = now_time.strftime("%A, %d de %B del %Y")
 
 user_information_check = f"""
-Name: xxx
+Name: Manuel
 Hora Actual: {formatted_time}
 Dia / Fecha: {formatted_date}
-Posicion Geografica del usuario: xxx
-Edad del usuario: xx
-Caracteristicas: xx
+Posicion Geografica del usuario:
+Edad del usuario: Unknow
+Caracteristicas: Unknow
 """
 
 #####################################################
@@ -73,7 +82,11 @@ Caracteristicas: xx
 def load_history_content():
     try:
         with open("history_tool.txt", "r", encoding="utf-8") as history_file:
-            return history_file.read().strip()
+            # Read all lines and get only the last non-empty line
+            lines = [line.strip() for line in history_file if line.strip()]
+            if lines:
+                return lines[-1]  # Return only the last line
+            return "No previous conversation history available."
     except FileNotFoundError:
         return "No previous conversation history available."
     except Exception as e:
@@ -91,7 +104,6 @@ def load_system_instructions():
     except Exception as e:
         print(f"Error reading system instructions file: {e}")
         return ""
-
 system_inst = load_system_instructions()
 SYSTEM_INSTRUCTIONS = f"{system_inst}\n{history_content}\nA continuacion esta la categoria de user_information:\n{user_information_check}"
 
@@ -117,25 +129,31 @@ CONFIG = {
     },
     "system_instruction": SYSTEM_INSTRUCTIONS,
     "safety_settings": SAFETY_SETTINGS,
-
-    "tools": [{
-        "function_declarations": [
-            {
-                "name": "print_yes",
-                "description": "Print yes es la funcion que permite continuar la conversacion. basicamente es una tool que genera todo un contexto de la charla",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "En este va todo el resumen de la conversacion"
-                        }
-                    },
-                    "required": ["query"]
-                }
+    "tools": [
+        {
+            "google_search": {
+                "type": "google_search"
             }
-        ]
-    }]
+        },
+        {
+            "function_declarations": [
+                {
+                    "name": "print_yes",
+                    "description": "Print yes es la funcion que permite continuar la conversacion. basicamente es una tool que genera todo un contexto de la charla",
+                    "parameters": {
+                        "type": "object",
+                        "required": ["query"],
+                        "properties": {
+                            "query": {
+                                "type": "string", 
+                                "description": "En este va todo el resumen de la conversacion"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    ],
 }
 
 #####################################################
@@ -238,6 +256,23 @@ class AudioLoop:
             if text.lower() == "q":
                 break
             
+            # Generar un ID único para esta transmisión
+            transmission_id = f"msg_{int(time.time()*1000)}"
+            print(f"\nEnviando mensaje con ID: {transmission_id}")
+            
+            # Interrumpir cualquier reproducción actual vaciando la cola de audio
+            try:
+                # Vaciar la cola de audio para interrumpir la reproducción actual
+                while not self.audio_in_queue.empty():
+                    try:
+                        self.audio_in_queue.get_nowait()
+                        self.audio_in_queue.task_done()
+                    except asyncio.QueueEmpty:
+                        break
+                print("Cola de audio vaciada para dar prioridad al nuevo mensaje")
+            except Exception as e:
+                print(f"Error al vaciar la cola de audio: {e}")
+            
             self.last_send_timestamp = time.time()
             await self.session.send(input=text or ".", end_of_turn=True)
 
@@ -245,49 +280,93 @@ class AudioLoop:
         ret, frame = cap.read()
         if not ret:
             return None
-        ret, buffer = cv2.imencode('.png', frame)
-        if not ret:
-            return None
-        return {"mime_type": "image/jpeg", "data": base64.b64encode(buffer).decode()}
+        # Convertir BGR a RGB para evitar el tinte azul en el video
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Usar PIL para mejor manejo de imágenes y redimensionamiento
+        img = PIL.Image.fromarray(frame_rgb)
+        img.thumbnail([1024, 1024])  # Redimensionar manteniendo proporción
+        
+        # Usar BytesIO para manejar la imagen en memoria
+        image_io = io.BytesIO()
+        img.save(image_io, format="jpeg")
+        image_io.seek(0)
+        
+        mime_type = "image/jpeg"
+        image_bytes = image_io.read()
+        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}
 
     async def get_frames(self):
-        cap = await asyncio.to_thread(cv2.VideoCapture, 0)
-        if not cap.isOpened():
-            print("Error: Camera not opened.")
-            return
+        max_retry_attempts = 3
+        retry_count = 0
+        retry_delay = 1.0
         
-        # Controlar la velocidad de captura para evitar sobrecarga
-        frame_interval = 0.1  # Capturar un frame cada 100ms (10 fps)
-        
-        while True:
-            # Capturar frame
-            frame = await asyncio.to_thread(self._get_frame, cap)
-            if frame is None:
+        while self.connection_active and retry_count < max_retry_attempts:
+            try:
+                cap = await asyncio.to_thread(cv2.VideoCapture, 0)
+                if not cap.isOpened():
+                    print("Error: Camera not opened.")
+                    retry_count += 1
+                    await asyncio.sleep(retry_delay * retry_count)
+                    continue
+                
+                # Reduce frame interval for more responsive video
+                frame_interval = 0.2  # Reduced from 0.5 to 0.2 seconds (5 fps)
+                
+                # Simplified frame processing - reduce error checking overhead
+                while self.connection_active:
+                    try:
+                        frame = await asyncio.to_thread(self._get_frame, cap)
+                        if frame is None:
+                            await asyncio.sleep(0.1)
+                            continue
+                        
+                        # Skip full queue check to reduce overhead - just add the new frame
+                        try:
+                            await self.out_queue.put(frame)
+                        except:
+                            pass  # Ignore errors when queue is full
+                        
+                        await asyncio.sleep(frame_interval)
+                    
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        print(f"Frame error: {e}")
+                        await asyncio.sleep(0.1)
+                
+                # Exit retry loop if everything went well
                 break
                 
-            # Limpiar la cola si está llena para asegurar que siempre enviamos los frames más recientes
-            if self.out_queue.full():
-                try:
-                    # Eliminar el frame más antiguo para hacer espacio
-                    self.out_queue.get_nowait()
-                    self.out_queue.task_done()
-                except asyncio.QueueEmpty:
-                    pass
-            
-            # Añadir el nuevo frame a la cola
-            await self.out_queue.put(frame)
-            
-            # Esperar un intervalo antes de capturar el siguiente frame
-            await asyncio.sleep(frame_interval)
-            
-        cap.release()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                retry_count += 1
+                print(f"Error al inicializar cámara (intento {retry_count}/{max_retry_attempts}): {e}")
+                if retry_count < max_retry_attempts:
+                    await asyncio.sleep(retry_delay * retry_count)
+                else:
+                    print(f"Error fatal al inicializar cámara después de {max_retry_attempts} intentos")
+            finally:
+                if 'cap' in locals() and cap is not None:
+                    try:
+                        cap.release()
+                        print("Cámara liberada correctamente")
+                    except Exception as e:
+                        print(f"Error al liberar cámara: {e}")
+        
+        if not self.connection_active:
+            print("Conexión inactiva, deteniendo captura de frames")
 
     _history_write_buffer = []
     _last_history_write = 0
     _history_write_interval = 5
     
 #####################################################
-# SISTEMA DE HISTORIAL & RECONEXIONES
+# SISTEMA DE MANEJO DE HISTORIAL
+#####################################################
+
+#####################################################
+# SISTEMA DE PROCESAMIENTO DE HISTORIAL
 #####################################################
 
     async def _flush_history_buffer(self):
@@ -304,247 +383,656 @@ class AudioLoop:
         except Exception as e:
             print(f"Error escribiendo buffer de historial: {e}")
     
+#####################################################
+# SISTEMA DE RECONEXIONES Y RECUPERACION
+#####################################################
+
     async def reconnect(self):
-        print("Iniciando proceso de reconexión simplificada...")
+        print("Iniciando proceso de reconexión...")
         self.connection_active = False
-        
-        if hasattr(self, 'audio_stream') and self.audio_stream is not None:
-            try:
-                self.audio_stream.close()
-                self.audio_stream = None
-            except Exception as e:
-                print(f"Error al cerrar stream de audio: {e}")
-        
-        if hasattr(self, 'session') and self.session is not None:
-            try:
-                await self.session.close()
-                self.session = None
-                print("Sesión anterior cerrada correctamente")
-            except Exception as e:
-                print(f"Error al cerrar la sesión: {e}")
-        
-        if hasattr(self, 'out_queue'):
-            try:
-                while not self.out_queue.empty():
+        max_cleanup_retries = 3
+        cleanup_retry_delay = 1.0
+        reconnect_backoff_factor = 2
+        cleanup_timeout = 5.0  # Timeout para operaciones de limpieza
+
+        async def cleanup_resources():
+            cleanup_success = True
+            
+            # Detener monitor y tareas activas
+            if hasattr(self, '_monitor_task') and self._monitor_task is not None:
+                try:
+                    self._monitor_task.cancel()
                     try:
-                        self.out_queue.get_nowait()
-                        self.out_queue.task_done()
-                    except asyncio.QueueEmpty:
-                        break
-            except Exception as e:
-                print(f"Error al limpiar la cola de salida: {e}")
-        
-        if hasattr(self, 'audio_in_queue'):
-            try:
-                while not self.audio_in_queue.empty():
+                        # Esperar a que el monitor termine con un timeout
+                        await asyncio.wait_for(asyncio.shield(self._monitor_task), timeout=cleanup_timeout)
+                    except asyncio.TimeoutError:
+                        print("Timeout al esperar que termine el monitor")
+                    except (asyncio.CancelledError, Exception) as e:
+                        print(f"Error al esperar que termine el monitor: {e}")
+                    self._monitor_task = None
+                except Exception as e:
+                    print(f"Error al detener monitor: {e}")
+                    self._monitor_task = None
+                    cleanup_success = False
+
+            # Cerrar stream de audio con reintentos y timeout
+            if hasattr(self, 'audio_stream') and self.audio_stream is not None:
+                for attempt in range(max_cleanup_retries):
                     try:
-                        self.audio_in_queue.get_nowait()
-                        self.audio_in_queue.task_done()
-                    except asyncio.QueueEmpty:
+                        async def close_stream():
+                            try:
+                                self.audio_stream.stop_stream()
+                                self.audio_stream.close()
+                            except Exception as e:
+                                raise Exception(f"Error al cerrar stream: {e}")
+                        
+                        # Ejecutar cierre con timeout
+                        try:
+                            await asyncio.wait_for(asyncio.to_thread(close_stream), timeout=cleanup_timeout)
+                            self.audio_stream = None
+                            print("Stream de audio cerrado correctamente")
+                            break
+                        except asyncio.TimeoutError:
+                            print(f"Timeout al cerrar stream de audio en intento {attempt + 1}")
+                        except Exception as e:
+                            print(f"Error al cerrar stream de audio: {e}")
+                            
+                        if attempt < max_cleanup_retries - 1:
+                            await asyncio.sleep(cleanup_retry_delay * (attempt + 1))
+                        else:
+                            self.audio_stream = None
+                            cleanup_success = False
+                    except Exception as e:
+                        print(f"Error crítico al cerrar stream de audio: {e}")
+                        self.audio_stream = None
+                        cleanup_success = False
+                        
+            # Close session with retries and improved error handling
+            if hasattr(self, 'session') and self.session is not None:
+                for attempt in range(max_cleanup_retries):
+                    try:
+                        # Try to close the session with timeout
+                        await asyncio.wait_for(self.session.close(), timeout=cleanup_timeout)
+                        self.session = None
+                        print("Sesión cerrada correctamente")
                         break
+                    except asyncio.TimeoutError:
+                        print(f"Timeout al cerrar sesión en intento {attempt + 1}")
+                    except Exception as e:
+                        print(f"Error al cerrar sesión: {e}")
+                    
+                    if attempt < max_cleanup_retries - 1:
+                        # Increase wait time between attempts
+                        await asyncio.sleep(cleanup_retry_delay * (attempt + 1))
+                    else:
+                        self.session = None
+                        cleanup_success = False
+                        print("No se pudo cerrar la sesión después de todos los intentos")
+            # Limpiar colas con manejo de errores mejorado y vaciado seguro
+            for queue_name, queue in [('out_queue', self.out_queue), ('audio_in_queue', self.audio_in_queue)]:
+                if hasattr(self, queue_name):
+                    try:
+                        # Vaciar la cola existente de forma segura
+                        while True:
+                            try:
+                                queue.get_nowait()
+                                queue.task_done()
+                            except asyncio.QueueEmpty:
+                                break
+                            except ValueError:
+                                # Ignorar errores de task_done
+                                pass
+                            except Exception as e:
+                                print(f"Error al vaciar cola {queue_name}: {e}")
+                                break
+                        
+                        # Crear nuevas colas
+                        if queue_name == 'out_queue':
+                            self.out_queue = asyncio.Queue(maxsize=20)
+                        elif queue_name == 'audio_in_queue':
+                            self.audio_in_queue = asyncio.Queue(maxsize=100)
+                        print(f"Cola {queue_name} limpiada y recreada correctamente")
+                    except Exception as e:
+                        print(f"Error al recrear cola {queue_name}: {e}")
+                        cleanup_success = False
+
+            # Limpiar buffers y reiniciar estados con manejo de errores específico
+            try:
+                # Limpiar frame buffer de forma segura
+                if hasattr(self, 'frame_buffer'):
+                    try:
+                        self.frame_buffer.clear()
+                        print("Frame buffer limpiado correctamente")
+                    except Exception as e:
+                        print(f"Error al limpiar frame buffer: {e}")
+                        cleanup_success = False
+
+                # Reiniciar contadores y timestamps
+                try:
+                    self.last_send_timestamp = None
+                    self.last_frame_send_time = 0
+                    self.frames_processed = 0
+                    self.data_counter = 0
+                    print("Contadores y timestamps reiniciados correctamente")
+                except Exception as e:
+                    print(f"Error al reiniciar contadores: {e}")
+                    cleanup_success = False
+
+                # Reiniciar otros estados
+                try:
+                    self._audio_buffer = bytearray()
+                    self.ping_ms = None
+                    self.interaction_count = 0
+                    print("Estados adicionales reiniciados correctamente")
+                except Exception as e:
+                    print(f"Error al reiniciar estados adicionales: {e}")
+                    cleanup_success = False
+
             except Exception as e:
-                print(f"Error al limpiar la cola de audio: {e}")
-        
-        print("Reiniciando conexión...")
-        await self.run()
+                print(f"Error general al reiniciar estados: {e}")
+                cleanup_success = False
+
+            return cleanup_success
+
+        try:
+            # Ejecutar limpieza de recursos
+            cleanup_result = await cleanup_resources()
+            if not cleanup_result:
+                print("Advertencia: Algunos recursos no se limpiaron correctamente")
+
+            # Pausa antes de intentar reconexión
+            wait_time = self.reconnect_delay * (reconnect_backoff_factor ** min(self.reconnect_attempts, 4))
+            print(f"Esperando {wait_time:.1f} segundos antes de intentar reconectar...")
+            await asyncio.sleep(wait_time)
+
+            # Intentar reconexión
+            print("Intentando reconexión...")
+            # Crear nuevas colas para evitar problemas con las anteriores
+            self.audio_in_queue = asyncio.Queue(maxsize=100)
+            self.out_queue = asyncio.Queue(maxsize=20)
+            
+            # Restablecer el estado de conexión antes de ejecutar run()
+            self.connection_active = True
+            
+            # Ejecutar run() en un bloque try-except para manejar errores
+            await self.run()
+            print("Conexión restablecida exitosamente")
+            self.reconnect_attempts = 0
+            
+        except asyncio.CancelledError:
+            print("Reconexión cancelada por el usuario")
+            self.connection_active = False
+            raise
+        except Exception as e:
+            print(f"Error al restablecer la conexión: {e}")
+            self.reconnect_attempts += 1
+            self.connection_active = False
+            
+            if self.reconnect_attempts >= self.max_reconnect_attempts:
+                print(f"Se alcanzó el máximo de intentos de reconexión ({self.max_reconnect_attempts})")
+                print("El sistema se detendrá. Por favor, reinicie la aplicación manualmente.")
+                return
+            else:
+                print(f"Reintentando reconexión ({self.reconnect_attempts}/{self.max_reconnect_attempts})")
+                # Esperar un poco antes de intentar de nuevo para evitar bucles rápidos
+                await asyncio.sleep(2.0)
+                await self.reconnect()
     
     async def send_realtime(self):
-        last_send_time = 0
-        min_send_interval = 0
-        max_retry_attempts = 3
-        retry_count = 0
-        retry_delay = 0.5
-        frame_send_interval = 0.2  # Enviar un frame cada 200ms como máximo
-        
-        while True:
+        # Simplified sending logic with fewer checks
+        while self.connection_active:
             try:
-                msg = await self.out_queue.get()
-                retry_count = 0
+                if not self.session:
+                    await asyncio.sleep(0.5)
+                    continue
+
+                try:
+                    msg = await self.out_queue.get()
+                except:
+                    await asyncio.sleep(0.1)
+                    continue
+                    
+                try:
+                    # Simplified sending logic - fewer retries and checks
+                    if isinstance(msg, dict) and msg.get('mime_type') == 'image/jpeg':
+                        self.frame_buffer.append(msg)
+                        current_time = time.time()
+                        if current_time - self.last_frame_send_time >= 0.2:  # Send frame every 200ms
+                            if self.frame_buffer:
+                                await self.session.send(input=self.frame_buffer[-1], end_of_turn=False)
+                                self.last_frame_send_time = current_time
+                    else:
+                        if isinstance(msg, dict) and msg.get('mime_type') == 'audio/pcm':
+                            if isinstance(msg['data'], bytes):
+                                msg = {'mime_type': 'audio/pcm', 'data': base64.b64encode(msg['data']).decode()}
+                        await self.session.send(input=msg)
+                    
+                    self.out_queue.task_done()
+                except Exception as e:
+                    print(f"Send error: {e}")
                 
-                current_time = asyncio.get_event_loop().time()
-                time_since_last = current_time - last_send_time
-                if time_since_last < min_send_interval:
-                    await asyncio.sleep(min_send_interval - time_since_last)
+            except Exception as e:
+                print(f"Critical send error: {e}")
+                await asyncio.sleep(0.1)
                 
-                if isinstance(msg, dict) and msg.get('mime_type') == 'image/jpeg':
-                    self.frame_buffer.append(msg)
-                    current_time = time.time()
-                    # Enviar frames a intervalos regulares, independientemente del envío de texto
-                    if current_time - self.last_frame_send_time >= frame_send_interval:
-                        # Siempre enviamos el frame más reciente del buffer
-                        if self.frame_buffer:
-                            latest_frame = self.frame_buffer[-1]
-                            await self.session.send(input=latest_frame, end_of_turn=False)
-                            self.last_frame_send_time = current_time
-#                            print("Frame enviado", end="\r")
-                else:
-                    self.last_send_timestamp = time.time()
-                    if isinstance(msg, dict) and msg.get('mime_type') == 'audio/pcm':
-                        if isinstance(msg['data'], bytes):
-                            msg = {'mime_type': 'audio/pcm', 'data': base64.b64encode(msg['data']).decode()}
-                    await self.session.send(input=msg)
-                
-                last_send_time = asyncio.get_event_loop().time()
-                self.out_queue.task_done()
+                # Solo marcar como completada si pudimos procesar el mensaje
+                try:
+                    if message_processed or not self.connection_active:
+                        self.out_queue.task_done()
+                except ValueError as task_done_error:
+                    # Ignorar el error "task_done() called too many times"
+                    if "called too many times" in str(task_done_error):
+                        print("Advertencia: Cola ya marcada como completada")
+                    else:
+                        print(f"Error al marcar tarea como completada: {task_done_error}")
 
             except asyncio.CancelledError:
-                raise
+                print("Operación de envío cancelada")
+                self.connection_active = False
+                break
             except Exception as e:
-                print(f"Error en send_realtime: {e}")
-                try:
-                    while not self.out_queue.empty():
-                        try:
-                            self.out_queue.get_nowait()
-                            self.out_queue.task_done()
-                        except asyncio.QueueEmpty:
+                print(f"Error crítico en send_realtime: {e}")
+                error_count += 1
+                if error_count >= max_errors:
+                    print(f"Demasiados errores consecutivos ({error_count}), iniciando reconexión...")
+                    try:
+                        if self.connection_active:
+                            self.connection_active = False
+                            await self.reconnect()
+                        else:
+                            print("Conexión inactiva, deteniendo send_realtime")
                             break
-                    
-                    await self.reconnect()
-                except asyncio.CancelledError:
-                    raise
-                except Exception as reconnect_error:
-                    print(f"Error durante la reconexión desde send_realtime: {reconnect_error}")
-                    raise
+                    except asyncio.CancelledError:
+                        self.connection_active = False
+                        break
+                    except Exception as reconnect_error:
+                        print(f"Error fatal durante la reconexión: {reconnect_error}")
+                        self.connection_active = False
+                        break
+                else:
+                    await asyncio.sleep(0.5)  # Pausa breve antes de continuar
 
 #####################################################
 # SISTEMA DE REPRODUCCION DE AUIDO CON PYAUDIO
 #####################################################
-
     async def listen_audio(self):
-        # Usar la función para obtener dispositivos de auriculares
-        input_device_index, _ = get_headphone_devices()
-        self.audio_stream = None
-        try:
-            self.audio_stream = await asyncio.to_thread(
-                pya.open,
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=SEND_SAMPLE_RATE,
-                input=True,
-                input_device_index=input_device_index,
-                frames_per_buffer=CHUNK_SIZE,
-            )
-            kwargs = {"exception_on_overflow": False}
-            while self.connection_active:
+        # Simplified audio capture with fewer error checks
+        max_init_retries = 3
+        init_retry_count = 0
+        
+        # Set up audio capture parameters
+        kwargs = {"exception_on_overflow": False}  # Optimize performance by ignoring overflow
+
+        while self.connection_active and init_retry_count < max_init_retries:
+            try:
+                # Get input device for headphones
+                input_device_index, _ = get_headphone_devices()
+                self.audio_stream = None
+
+                # Simplified audio stream initialization
                 try:
-                    data = await asyncio.to_thread(self.audio_stream.read, CHUNK_SIZE, **kwargs)
-                    if not self.connection_active:
-                        break
-                    await self.out_queue.put({"data": data, "mime_type": "audio/pcm"})
+                    self.audio_stream = pya.open(
+                        format=FORMAT,
+                        channels=CHANNELS,
+                        rate=SEND_SAMPLE_RATE,
+                        input=True,
+                        input_device_index=input_device_index,
+                        frames_per_buffer=CHUNK_SIZE,
+                    )
+                    print("Audio stream initialized successfully")
                 except Exception as e:
-                    print(f"Error al capturar audio: {e}")
-                    if not self.connection_active:
-                        break
+                    raise RuntimeError(f"Error initializing audio stream: {e}")
+
+                kwargs = {"exception_on_overflow": False}
+                consecutive_errors = 0
+                max_consecutive_errors = 5
+                error_threshold_time = 2.0  # segundos
+                last_error_time = None
+                stream_error_count = 0  # Resetear contador de errores de stream
+
+                while self.connection_active:
+                    try:
+                        if not self.audio_stream:
+                            raise RuntimeError("Stream de audio no disponible")
+
+                        # Usar timeout para evitar bloqueos en la lectura del audio
+                        try:
+                            data = await asyncio.wait_for(
+                                asyncio.to_thread(self.audio_stream.read, CHUNK_SIZE, **kwargs),
+                                timeout=1.0
+                            )
+                        except asyncio.TimeoutError:
+                            print("Timeout al leer audio, reintentando...")
+                            consecutive_errors += 1
+                            if consecutive_errors >= max_consecutive_errors:
+                                raise RuntimeError("Múltiples timeouts al leer audio")
+                            continue
+
+                        if not self.connection_active:
+                            break
+
+                        # Verificar que la cola no esté llena antes de intentar poner datos
+                        if self.out_queue.full():
+                            try:
+                                # Eliminar el elemento más antiguo para hacer espacio
+                                self.out_queue.get_nowait()
+                                self.out_queue.task_done()
+                            except (asyncio.QueueEmpty, ValueError) as e:
+                                # Ignorar errores de cola vacía o task_done llamado demasiadas veces
+                                pass
+
+                        # Usar timeout para evitar bloqueos al poner en la cola
+                        try:
+                            await asyncio.wait_for(
+                                self.out_queue.put({"data": data, "mime_type": "audio/pcm"}),
+                                timeout=1.0
+                            )
+                        except asyncio.TimeoutError:
+                            # Si no podemos poner en la cola, simplemente continuamos
+                            continue
+
+                        consecutive_errors = 0  # Resetear contador de errores tras éxito
+                        last_error_time = None
+                        stream_error_count = 0  # Resetear contador de errores de stream
+
+                    except Exception as e:
+                        current_time = time.time()
+                        if last_error_time is None:
+                            last_error_time = current_time
+                        elif current_time - last_error_time < error_threshold_time:
+                            consecutive_errors += 1
+                        else:
+                            consecutive_errors = 1
+                        last_error_time = current_time
+
+                        print(f"Error al capturar audio: {e}")
+                        stream_error_count += 1
+
+                        # Verificar si tenemos demasiados errores consecutivos o totales
+                        if consecutive_errors >= max_consecutive_errors or stream_error_count >= max_stream_errors:
+                            print(f"Demasiados errores ({consecutive_errors} consecutivos, {stream_error_count} totales), reiniciando stream...")
+                            break  # Salir del bucle interno para reiniciar el stream
+
+                        if not self.connection_active:
+                            break
+
+                        await asyncio.sleep(0.1)  # Breve pausa antes de reintentar
+
+                # Si salimos del bucle por errores pero la conexión sigue activa, reiniciamos el stream
+                if self.connection_active and (consecutive_errors >= max_consecutive_errors or stream_error_count >= max_stream_errors):
+                    if self.audio_stream is not None:
+                        try:
+                            self.audio_stream.stop_stream()
+                            self.audio_stream.close()
+                            self.audio_stream = None
+                            print("Stream de audio cerrado para reinicio")
+                        except Exception as e:
+                            print(f"Error al cerrar stream para reinicio: {e}")
+                            self.audio_stream = None
+                    # Continuar al siguiente intento sin incrementar init_retry_count
+                    await asyncio.sleep(1.0)  # Pausa antes de reiniciar
+                    continue
+
+                # Si llegamos aquí sin errores o con la conexión inactiva, salimos del bucle de reintentos
+                if not self.connection_active or stream_error_count < max_stream_errors:
+                    break
+
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                init_retry_count += 1
+                if init_retry_count < max_init_retries:
+                    wait_time = init_retry_delay * (2 ** (init_retry_count - 1))  # Backoff exponencial
+                    print(f"Error al inicializar stream de audio (intento {init_retry_count}/{max_init_retries}): {e}")
+                    print(f"Reintentando en {wait_time} segundos...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Error fatal al inicializar stream de audio después de {max_init_retries} intentos: {e}")
                     if self.connection_active:
-                        await self.reconnect()
-                        break
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            print(f"Error al inicializar stream de audio de entrada: {e}")
-            if self.connection_active:
-                await self.reconnect()
-        finally:
-            if self.audio_stream is not None:
-                try:
-                    self.audio_stream.close()
-                    self.audio_stream = None
-                    print("Stream de audio de entrada cerrado correctamente")
-                except Exception as e:
-                    print(f"Error al cerrar stream de audio de entrada: {e}")
-                    self.audio_stream = None
+                        print("Iniciando proceso de reconexión debido a errores persistentes de audio")
+                        self.connection_active = False
+                        asyncio.create_task(self.reconnect())
+                    return
+
+            finally:
+                if self.audio_stream is not None:
+                    try:
+                        self.audio_stream.stop_stream()
+                        self.audio_stream.close()
+                        self.audio_stream = None
+                        print("Stream de audio de entrada cerrado correctamente")
+                    except Exception as e:
+                        print(f"Error al cerrar stream de audio de entrada: {e}")
+                        self.audio_stream = None
+
+        if not self.connection_active:
+            print("Conexión inactiva, deteniendo listen_audio")
+
 
     _history_cache = None
     _last_history_read = 0
     
     async def receive_audio(self):
-        while True:
-            turn = self.session.receive()
-            full_text = ""
-            tool_calls_to_respond = []
-            tool_call_detected = False
-            first_response_received = False
-            
-            async for response in turn:
-                
-                if not first_response_received and self.last_send_timestamp is not None:
-                    first_response_received = True
-                    current_time = time.time()
-                    self.ping_ms = round((current_time - self.last_send_timestamp) * 1000)
-                    print(f"\n[Ping: {self.ping_ms}ms]")
-                    
-                
-                if hasattr(response, "tool_call") and response.tool_call is not None:
-                    tool_call_detected = True
-                    if hasattr(response.tool_call, "function_calls"):
-                        function_calls = response.tool_call.function_calls
-                    else:
-                        function_calls = [response.tool_call]
-                    
-                    for func_call in function_calls:
-                        if hasattr(func_call, "name"):
-                            func_name = func_call.name
-                        elif hasattr(func_call, "function") and hasattr(func_call.function, "name"):
-                            func_name = func_call.function.name
-                        else:
-                            print("No se pudo determinar el nombre de la función")
-                            continue
-                        
-                        if hasattr(func_call, "args"):
-                            args_dict = func_call.args
-                        elif hasattr(func_call, "function") and hasattr(func_call.function, "args"):
-                            args_dict = func_call.function.args
-                        else:
-                            args_dict = {}
-                            print(f"No se pudieron extraer argumentos para la función {func_name}")
-                        
-                        result_string = args_dict.get("query", "")
-                        if result_string:
-                            if func_name == "google_search":
-                                print(f"\n[Búsqueda Google] {result_string[:50]}..." if len(result_string) > 50 else f"\n[Búsqueda Google] {result_string}")
-                            else:
-                                print(f"\n[Function Call] {result_string[:50]}..." if len(result_string) > 50 else f"\n[Function Call] {result_string}")
-                            
-                            try:
-                                if hasattr(response.tool_call, "id"):
-                                    tool_call_id = response.tool_call.id
-                                elif hasattr(func_call, "id"):
-                                    tool_call_id = func_call.id
-                                elif hasattr(func_call, "call_id"):
-                                    tool_call_id = func_call.call_id
-                                else:
-                                    tool_call_id = "unknown"
-                            except AttributeError:
-                                tool_call_id = "unknown"
-                                
-                            tool_calls_to_respond.append({
-                                "id": tool_call_id,
-                                "name": func_name,
-                                "result": result_string
-                            })
-                            
-                            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            new_entry = f"[{timestamp}] {func_name}: {result_string}\n"
-                            AudioLoop._history_write_buffer.append(new_entry)
-                    
-                
-                if data := response.data:
-                    await self.audio_in_queue.put(data)
+        max_retry_attempts = 3
+        retry_count = 0
+        retry_delay = 1.0
+        backoff_factor = 2
+        error_count = 0
+        max_consecutive_errors = 5
+        error_threshold_time = 2.0  # segundos
+        last_error_time = None
+        
+        while self.connection_active:
+            try:
+                if not self.session:
+                    print("No hay sesión activa en receive_audio. Esperando reconexión...")
+                    await asyncio.sleep(1)
                     continue
-                if text := response.text:
-                    full_text += text
-                    print(text, end="")
+                    
+                try:
+                    turn = self.session.receive()
+                except Exception as session_error:
+                    print(f"Error al iniciar recepción: {session_error}")
+                    if "invalid frame payload data" in str(session_error) or "connection closed" in str(session_error).lower():
+                        print("Detectado error de conexión en la sesión, iniciando reconexión...")
+                        self.connection_active = False
+                        asyncio.create_task(self.reconnect())
+                        return
+                    raise  # Re-lanzar para que sea manejado por el bloque exterior
+                
+                full_text = ""
+                tool_calls_to_respond = []
+                tool_call_detected = False
+                first_response_received = False
+                retry_count = 0  # Resetear contador de reintentos tras éxito
+                error_count = 0  # Resetear contador de errores tras éxito
+                last_error_time = None
+                
+                try:
+                    async for response in turn:
+                        if not self.connection_active:
+                            break
+                            
+                        if not first_response_received and self.last_send_timestamp is not None:
+                            first_response_received = True
+                            current_time = time.time()
+                            self.ping_ms = round((current_time - self.last_send_timestamp) * 1000)
+                            print(f"\n[Ping: {self.ping_ms}ms]")
+                        
+                        if hasattr(response, "tool_call") and response.tool_call is not None:
+                            tool_call_detected = True
+                            if hasattr(response.tool_call, "function_calls"):
+                                function_calls = response.tool_call.function_calls
+                            else:
+                                function_calls = [response.tool_call]
+                            
+                            for func_call in function_calls:
+                                if not self.connection_active:
+                                    break
+                                    
+                                try:
+                                    if hasattr(func_call, "name"):
+                                        func_name = func_call.name
+                                    elif hasattr(func_call, "function") and hasattr(func_call.function, "name"):
+                                        func_name = func_call.function.name
+                                    else:
+                                        print("No se pudo determinar el nombre de la función")
+                                        continue
+                                    
+                                    if hasattr(func_call, "args"):
+                                        args_dict = func_call.args
+                                    elif hasattr(func_call, "function") and hasattr(func_call.function, "args"):
+                                        args_dict = func_call.function.args
+                                    else:
+                                        args_dict = {}
+                                        print(f"No se pudieron extraer argumentos para la función {func_name}")
+                                    
+                                    result_string = args_dict.get("query", "")
+                                    if result_string:
+                                        if func_name == "google_search":
+                                            print(f"\n[Búsqueda Google] {result_string[:50]}..." if len(result_string) > 50 else f"\n[Búsqueda Google] {result_string}")
+                                        else:
+                                            print(f"\n[Function Call] {result_string[:50]}..." if len(result_string) > 50 else f"\n[Function Call] {result_string}")
+                                        
+                                        try:
+                                            if hasattr(response.tool_call, "id"):
+                                                tool_call_id = response.tool_call.id
+                                            elif hasattr(func_call, "id"):
+                                                tool_call_id = func_call.id
+                                            elif hasattr(func_call, "call_id"):
+                                                tool_call_id = func_call.call_id
+                                            else:
+                                                tool_call_id = "unknown"
+                                        except AttributeError:
+                                            tool_call_id = "unknown"
+                                            
+                                        tool_calls_to_respond.append({
+                                            "id": tool_call_id,
+                                            "name": func_name,
+                                            "result": result_string
+                                        })
+                                        
+                                        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                        new_entry = f"[{timestamp}] {func_name}: {result_string}\n"
+                                        AudioLoop._history_write_buffer.append(new_entry)
+                                except Exception as func_error:
+                                    print(f"Error al procesar función: {func_error}")
+                                    continue  # Continuar con la siguiente función
+                        
+                        try:
+                            if data := response.data:
+                                # Usar timeout para evitar bloqueos al poner en la cola
+                                try:
+                                    if self.audio_in_queue.full():
+                                        # Si la cola está llena, eliminar el elemento más antiguo
+                                        try:
+                                            self.audio_in_queue.get_nowait()
+                                            self.audio_in_queue.task_done()
+                                        except (asyncio.QueueEmpty, ValueError):
+                                            pass
+                                    
+                                    await asyncio.wait_for(
+                                        self.audio_in_queue.put(data),
+                                        timeout=1.0
+                                    )
+                                except asyncio.TimeoutError:
+                                    # Si no podemos poner en la cola, simplemente continuamos
+                                    continue
+                                continue
+                            if text := response.text:
+                                full_text += text
+                                print(text, end="")
+                        except Exception as data_error:
+                            print(f"Error al procesar datos de respuesta: {data_error}")
+                            continue  # Continuar con la siguiente respuesta
+                            
+                except Exception as stream_error:
+                    if "task_done() called too many times" in str(stream_error):
+                        print("Advertencia: Error de task_done() en la cola, continuando...")
+                    elif "invalid frame payload data" in str(stream_error) or "connection closed" in str(stream_error).lower():
+                        print(f"Error de conexión en el stream: {stream_error}")
+                        if self.connection_active:
+                            self.connection_active = False
+                            asyncio.create_task(self.reconnect())
+                            return
+                    else:
+                        print(f"Error en el stream de respuestas: {stream_error}")
+                        current_time = time.time()
+                        if last_error_time is None:
+                            last_error_time = current_time
+                        elif current_time - last_error_time < error_threshold_time:
+                            error_count += 1
+                        else:
+                            error_count = 1
+                        last_error_time = current_time
+                        
+                        if error_count >= max_consecutive_errors:
+                            print(f"Demasiados errores consecutivos ({error_count}), iniciando reconexión...")
+                            if self.connection_active:
+                                self.connection_active = False
+                                asyncio.create_task(self.reconnect())
+                                return
+                
+                # Procesar resultados después de completar el stream
+                if self.connection_active:
+                    try:
+                        current_time = datetime.datetime.now().timestamp()
+                        if (current_time - AudioLoop._last_history_write > AudioLoop._history_write_interval and
+                            AudioLoop._history_write_buffer):
+                            await self._flush_history_buffer()
+                        
+                        if tool_calls_to_respond:
+                            asyncio.create_task(self._process_tool_responses(tool_calls_to_respond))
+                        
+                        print()
+                    except Exception as post_error:
+                        print(f"Error al procesar resultados finales: {post_error}")
             
-            
-            current_time = datetime.datetime.now().timestamp()
-            if (current_time - AudioLoop._last_history_write > AudioLoop._history_write_interval and
-                AudioLoop._history_write_buffer):
-                await self._flush_history_buffer()
-            
-            if tool_calls_to_respond:
-                asyncio.create_task(self._process_tool_responses(tool_calls_to_respond))
-            
-            print()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                if not self.connection_active:
+                    print("Conexión inactiva, deteniendo receive_audio")
+                    return
+                    
+                current_time = time.time()
+                if last_error_time is None:
+                    last_error_time = current_time
+                elif current_time - last_error_time < error_threshold_time:
+                    error_count += 1
+                else:
+                    error_count = 1
+                last_error_time = current_time
+                
+                print(f"Error en receive_audio: {e}")
+                
+                if "invalid frame payload data" in str(e) or "connection closed" in str(e).lower():
+                    print("Detectado error de conexión, iniciando reconexión...")
+                    if self.connection_active:
+                        self.connection_active = False
+                        asyncio.create_task(self.reconnect())
+                        return
+                
+                if error_count >= max_consecutive_errors:
+                    print(f"Demasiados errores consecutivos ({error_count}), iniciando reconexión...")
+                    if self.connection_active:
+                        self.connection_active = False
+                        asyncio.create_task(self.reconnect())
+                        return
+                
+                retry_count += 1
+                if retry_count >= max_retry_attempts:
+                    print(f"Demasiados reintentos ({retry_count}), iniciando reconexión...")
+                    if self.connection_active:
+                        self.connection_active = False
+                        asyncio.create_task(self.reconnect())
+                        return
+                
+                wait_time = retry_delay * (backoff_factor ** (retry_count - 1))
+                print(f"Reintentando en {wait_time:.1f} segundos... (Intento {retry_count}/{max_retry_attempts})")
+                await asyncio.sleep(wait_time)
+        
+        print("Conexión inactiva, deteniendo receive_audio")
 
 #####################################################
 # SISTEMA DE PROCESAMIENTO DE RESPUESTAS DE TOOLS
@@ -579,48 +1067,145 @@ class AudioLoop:
 
     async def play_audio(self):
         # Usar la función para obtener dispositivos de auriculares
-        _, output_device_index = get_headphone_devices()
-        stream = None
-        try:
-            stream = await asyncio.to_thread(
-                pya.open,
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=RECEIVE_SAMPLE_RATE,
-                output=True,
-                output_device_index=output_device_index,
-            )
-            while self.connection_active:
+        max_init_retries = 3
+        init_retry_count = 0
+        init_retry_delay = 1.0
+        consecutive_errors = 0
+        max_consecutive_errors = 5
+        error_threshold_time = 2.0  # segundos
+        last_error_time = None
+        
+        while self.connection_active and init_retry_count < max_init_retries:
+            try:
+                # Obtener dispositivo de salida
+                _, output_device_index = get_headphone_devices()
+                stream = None
+                
+                # Intentar inicializar el stream de audio con manejo de errores mejorado
                 try:
-                    audio_data = await asyncio.wait_for(self.audio_in_queue.get(), timeout=1.0)
-                    
-                    if not self.connection_active:
-                        self.audio_in_queue.task_done()
-                        break
-                        
-                    await asyncio.to_thread(stream.write, audio_data)
-                    self.audio_in_queue.task_done()
-                    
+                    stream = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            pya.open,
+                            format=FORMAT,
+                            channels=CHANNELS,
+                            rate=RECEIVE_SAMPLE_RATE,
+                            output=True,
+                            output_device_index=output_device_index,
+                        ),
+                        timeout=5.0  # Timeout para evitar bloqueos
+                    )
+                    print("Stream de audio de salida inicializado correctamente")
                 except asyncio.TimeoutError:
-                    if not self.connection_active:
-                        break
-                except Exception as e:
-                    print(f"Error al reproducir audio: {e}")
-                    if not self.connection_active:
-                        break
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            print(f"Error al inicializar stream de audio de salida: {e}")
-            if self.connection_active:
-                await self.reconnect()
-        finally:
-            if stream is not None:
-                try:
-                    stream.close()
-                    print("Stream de audio de salida cerrado correctamente")
-                except Exception as e:
-                    print(f"Error al cerrar stream de audio de salida: {e}")
+                    raise RuntimeError("Timeout al inicializar stream de audio de salida")
+                
+                consecutive_errors = 0
+                
+                while self.connection_active:
+                    try:
+                        # Usar timeout para evitar bloqueos en la lectura de la cola
+                        audio_data = await asyncio.wait_for(self.audio_in_queue.get(), timeout=1.0)
+                        
+                        if not self.connection_active:
+                            try:
+                                self.audio_in_queue.task_done()
+                            except ValueError:
+                                # Ignorar errores de task_done llamado demasiadas veces
+                                pass
+                            break
+                        
+                        # Usar timeout para evitar bloqueos en la reproducción
+                        try:
+                            await asyncio.wait_for(
+                                asyncio.to_thread(stream.write, audio_data),
+                                timeout=2.0
+                            )
+                            try:
+                                self.audio_in_queue.task_done()
+                            except ValueError:
+                                # Ignorar errores de task_done llamado demasiadas veces
+                                pass
+                            consecutive_errors = 0  # Resetear contador de errores tras éxito
+                            last_error_time = None
+                        except asyncio.TimeoutError:
+                            print("Timeout al reproducir audio, reintentando...")
+                            try:
+                                self.audio_in_queue.task_done()
+                            except ValueError:
+                                pass
+                            consecutive_errors += 1
+                            if consecutive_errors >= max_consecutive_errors:
+                                raise RuntimeError("Múltiples timeouts al reproducir audio")
+                            continue
+                        
+                    except asyncio.TimeoutError:
+                        # Timeout normal al esperar audio, no es un error
+                        if not self.connection_active:
+                            break
+                    except Exception as e:
+                        current_time = time.time()
+                        if last_error_time is None:
+                            last_error_time = current_time
+                        elif current_time - last_error_time < error_threshold_time:
+                            consecutive_errors += 1
+                        else:
+                            consecutive_errors = 1
+                        last_error_time = current_time
+                        
+                        print(f"Error al reproducir audio: {e}")
+                        if consecutive_errors >= max_consecutive_errors:
+                            print(f"Demasiados errores consecutivos ({consecutive_errors}), reiniciando stream...")
+                            break
+                        
+                        if not self.connection_active:
+                            break
+                        
+                        await asyncio.sleep(0.1)  # Breve pausa antes de reintentar
+                
+                # Si salimos del bucle por errores pero la conexión sigue activa, reiniciamos el stream
+                if self.connection_active and consecutive_errors >= max_consecutive_errors:
+                    if stream is not None:
+                        try:
+                            stream.stop_stream()
+                            stream.close()
+                            stream = None
+                            print("Stream de audio de salida cerrado para reinicio")
+                        except Exception as e:
+                            print(f"Error al cerrar stream de salida para reinicio: {e}")
+                            stream = None
+                    # Continuar al siguiente intento sin incrementar init_retry_count
+                    await asyncio.sleep(1.0)  # Pausa antes de reiniciar
+                    continue
+                
+                # Si llegamos aquí sin errores o con la conexión inactiva, salimos del bucle de reintentos
+                break
+                
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                init_retry_count += 1
+                if init_retry_count < max_init_retries:
+                    wait_time = init_retry_delay * (2 ** (init_retry_count - 1))  # Backoff exponencial
+                    print(f"Error al inicializar stream de audio de salida (intento {init_retry_count}/{max_init_retries}): {e}")
+                    print(f"Reintentando en {wait_time} segundos...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Error fatal al inicializar stream de audio de salida después de {max_init_retries} intentos: {e}")
+                    if self.connection_active:
+                        print("Iniciando proceso de reconexión debido a errores persistentes de audio de salida")
+                        self.connection_active = False
+                        asyncio.create_task(self.reconnect())
+                    return
+            finally:
+                if stream is not None:
+                    try:
+                        stream.stop_stream()
+                        stream.close()
+                        print("Stream de audio de salida cerrado correctamente")
+                    except Exception as e:
+                        print(f"Error al cerrar stream de audio de salida: {e}")
+        
+        if not self.connection_active:
+            print("Conexión inactiva, deteniendo reproducción de audio")
 
 #####################################################
 # SISTEMA DE INICIO Y REINICIO
