@@ -1,4 +1,0 @@
-[2025-04-19 14:41:15] El usuario solicito guardar el historial.
-[2025-04-19 14:43:22] print_yes: El usuario solicito guardar el historial.
-[2025-04-19 14:44:21] print_yes: El usuario solicito usar print yes
-[2025-04-19 14:47:44] print_yes: El usuario solicito usar print yes
