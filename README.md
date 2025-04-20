@@ -15,6 +15,10 @@ Gemini API Real-Time, glasses with built-in AI
 ## 🔍 Flujo de Trabajo
 A continuación, se muestra el flujo de trabajo del sistema:  
 ![Workflow](Notes/workflow.png)
+### 🛠️ Sistema De Memoria Nativo
+![Memoru](Notes/workflow22.png)
+### ⚡ Reconnect Rate Limit (2 Mins limit to infinit workflow)
+![reconnecy](Notes/workflow21.png)
 
 ---
 
@@ -23,11 +27,21 @@ A continuación, se muestra el flujo de trabajo del sistema:
 📦 Gafas-IA-Integradas
 ├── 📁 Notes              # Documentación y referencias
 │   ├── 🖼️ workflow.png   # Diagrama del flujo de trabajo
+|   ├── 🖼️ workflow22.png
+|   ├── 🖼️ workflow21.png
 ├── 📂 Code_Source                # Código fuente
 │   ├── 📜 main.py        # Archivo principal
-│   ├── 📜 api.txt       # Text File (Here your gemini api key)
-│   ├── 📜 history_tool.txt  # Funciones auxiliares
-│   ├── 📜 system_instructions.txt
+│   ├── 📜 exe.py       # Text File (Here your gemini api key)
+|   ├── 📂 data
+│        ├── 📜 config.json
+│        ├── 📜 current_mode.txt
+│        ├── 📜 history_tool.txt
+│        ├── 📜 status.txt
+|   ├── 📂 Funciones
+│        ├── 📜 audio_def.py
+│        ├── 📜 basic_def.py
+│        ├── 📜 pya_def.py
+│        ├── 📜 config.py
 ├── 📄 README.md          # Este archivo
 ```
 ---
@@ -65,7 +79,7 @@ A continuación, algunas imágenes relacionadas con el proyecto:
    ```
 3. Ejecutar el programa:
    ```bash
-   python Code_Source/main.py # Change folder name, due mayus
+   python Code_Source/exe.py # Change folder name, due mayus
    ```
 
 ---
