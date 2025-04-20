@@ -1,0 +1,12 @@
+{
+    "api_keys": [],
+    "current_mode": "default",
+    "voice": "Orus",
+    "capture_mode": "camera",
+    "logging_enabled": false,
+    "instructions": {
+        "default": "unknown",
+        "normal": "unknown",
+        "psicologo": "unknown"
+    }
+}
