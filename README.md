@@ -11,6 +11,11 @@ Gemini API Real-Time, glasses with built-in AI
 - 🎯 Diseñado para facilitar la accesibilidad y mejorar la experiencia del usuario
 
 ---
+## 3 Modos Diferentes;
+1. Psicologo
+2. Conversacional
+3. Lentes (activacion por voz)
+---
 
 ## 🔍 Flujo de Trabajo
 A continuación, se muestra el flujo de trabajo del sistema:  
