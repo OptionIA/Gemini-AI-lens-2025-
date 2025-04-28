@@ -12,9 +12,9 @@ Gemini API Real-Time, glasses with built-in AI
 
 ---
 ## 3 Modos Diferentes;
-1. Psicologo
-2. Conversacional
-3. Lentes (activacion por voz)
+1. Psicologo ⚡ *PRE-BETA*
+2. Conversacional 😊 *WORKING IN*
+3. Lentes (activacion por voz) ✨ *SOON*
 ---
 
 ## 🔍 Flujo de Trabajo
@@ -29,25 +29,30 @@ A continuación, se muestra el flujo de trabajo del sistema:
 
 ## 📂 Estructura del Proyecto
 ```
-📦 Gafas-IA-Integradas
+📦 V1.1.9
 ├── 📁 Notes              # Documentación y referencias
 │   ├── 🖼️ workflow.png   # Diagrama del flujo de trabajo
-|   ├── 🖼️ workflow22.png
-|   ├── 🖼️ workflow21.png
-├── 📂 Code_Source                # Código fuente
-│   ├── 📜 main.py        # Archivo principal
-│   ├── 📜 exe.py       # Text File (Here your gemini api key)
-|   ├── 📂 data
-│        ├── 📜 config.json
-│        ├── 📜 current_mode.txt
-│        ├── 📜 history_tool.txt
-│        ├── 📜 status.txt
-|   ├── 📂 Funciones
-│        ├── 📜 audio_def.py
-│        ├── 📜 basic_def.py
-│        ├── 📜 pya_def.py
-│        ├── 📜 config.py
-├── 📄 README.md          # Este archivo
+│   ├── 🖼️ workflow22.png
+│   ├── 🖼️ workflow21.png
+├── 📁 data              
+│   ├── 📜 config.json   
+│   ├── 📜 current_mode.txt
+│   ├── 📜 history_tool.txt
+│   ├── 📜 status.txt
+│   ├── 📜 voice.txt
+│   └── 📂 instructions
+│       ├── 📜 lentes_ai.txt
+│       ├── 📜 conversacional.txt
+│       └── 📜 agente_psicologo.txt
+├── 📁 funciones                
+│   ├── 📜 audio_def.py        
+│   ├── 📜 basic_def.py       
+│   ├── 📜 pya_def.py
+│   ├── 📜 config.py
+│   └── 📜 video_def.py
+├── 📜 main.py
+├── 📜 exe.py
+└── 📜 requirements.txt
 ```
 ---
 ## Notes
