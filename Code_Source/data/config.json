@@ -1,0 +1,13 @@
+{
+    "api_keys": [],
+    "current_mode": "conversacional",
+    "voice": "Puck",
+    "language": "es-ES",
+    "capture_mode": "camera",
+    "logging_enabled": false,
+    "instructions": {
+        "lentes_ai": "file://instructions/lentes_ai.txt",
+        "conversacional": "file://instructions/conversacional.txt",
+        "agente_psicologo": "file://instructions/agente_psicologo.txt"
+    }
+}
