@@ -5,22 +5,22 @@ Gemini API Real-Time, glasses with built-in AI
 ---
 
 ## 📌 Características
-- 🌐 Visión asistida con IA
-- ⚡ Procesamiento en tiempo real
-- 🛠️ Integración con hardware optimizado
-- 🎯 Diseñado para facilitar la accesibilidad y mejorar la experiencia del usuario
+- 🌐 With Built In AI vision
+- ⚡ Realtime proccesing
+- 🛠️ Omptimized for low-cost hardware
+- 🎯 Easy management UI for easy usage
 
 ---
-## 3 Modos Diferentes;
+## 3 Different Modes;
 1. Psicologo ⚡ *PRE-BETA*
 2. Conversacional 😊 *WORKING IN*
 3. Lentes (activacion por voz) ✨ *SOON*
 ---
 
-## 🔍 Flujo de Trabajo
-A continuación, se muestra el flujo de trabajo del sistema:  
+## 🔍 Workflow's
+Here is some workflow's that I made just for let you know how it work 😁
 ![Workflow](Notes/workflow.png)
-### 🛠️ Sistema De Memoria Nativo
+### 🛠️ Fully Native Memory SYS
 ![Memoru](Notes/workflow22.png)
 ### ⚡ Reconnect Rate Limit (2 Mins limit to infinit workflow)
 ![reconnecy](Notes/workflow21.png)
@@ -56,7 +56,7 @@ A continuación, se muestra el flujo de trabajo del sistema:
 ```
 ---
 ## Notes
-### 📸 Galería de Imágenes
+### 📸 Papers that I made during develop phase
 
 A continuación, algunas imágenes relacionadas con el proyecto:
 
@@ -78,7 +78,7 @@ A continuación, algunas imágenes relacionadas con el proyecto:
 
 ---
 
-## 🚀 Instalación y Uso
+## 🚀 How to use
 1. Clonar el repositorio:
    ```bash
    git clone https://github.com/OptionIA/Gemini-AI-lens-2025-/tree/main
