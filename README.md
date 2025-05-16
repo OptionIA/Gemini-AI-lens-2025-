@@ -1,4 +1,4 @@
-# Gemini-AI-lens-2025-
+# Gemini-AI-lens-2025- 💛✨🌹
 Gemini API Real-Time, future glasses with built-in AI 
 🚀 **Large project using Gemini RAG, This project was made with an original idea "Make an AI glasses with built in AI", And yes, I am getting this, so please leave a star
 
