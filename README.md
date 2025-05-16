@@ -122,7 +122,9 @@ python Code_Source/exe.py # Change folder name, due mayus
 
 4. Go to configuration and update your gemini api keys:
 
-5. Start the mode to use
+5. Setup your input audio and output audio devices in config
+
+6. Start the mode to use
 
 ## ⚖️ Licencia
 🚫 **READ LICENSE BEFORE USE** – READ LICENSE BEFORE USE
