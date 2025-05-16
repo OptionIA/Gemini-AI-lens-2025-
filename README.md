@@ -1,7 +1,18 @@
 # Gemini-AI-lens-2025-
-Gemini API Real-Time, glasses with built-in AI
-🚀 **Proyecto innovador de gafas con inteligencia artificial integrada**, diseñadas para potenciar la interacción con el mundo real mediante visión asistida y procesamiento en tiempo real.
+Gemini API Real-Time, future glasses with built-in AI 
+🚀 **Large project using Gemini RAG, This project was made with an original idea "Make an AI glasses with built in AI", And yes, I am getting this, so please leave a star
 
+**NOTE:**
+
+| Note Subject | Note Description | Year Wrote |
+|---|---|---|
+| Motivation | Valentina Werle (Werle) motivated the project and the addition of psychologist mode. (she and a friend told me the idea) | 2025 |
+| Project Timeline | The project took 3 months of coding + 1 month of investigations. | 2025 |
+| Development | The project was developed alone, without any human help. | 2025 |
+| Language | The author's native language is Spanish, but they also dominate English. (Written for future reference on English level in 2025) | 2025 |
+| Priorities | I'am prioritized low-cost + efficiency over ease of software. | 2025 |
+| Contribution | I'am open to contributions to Open Source projects. | 2025 |
+| Time Spent | 4 Month's Aproximated Time | 2025 |
 ---
 
 ## 📌 Características
@@ -13,8 +24,8 @@ Gemini API Real-Time, glasses with built-in AI
 ---
 ## 3 Different Modes;
 1. Psicologo ⚡ *PRE-BETA*
-2. Conversacional 😊 *WORKING IN*
-3. Lentes (activacion por voz) ✨ *SOON*
+2. Conversacional 😊 *PRE-BETA*
+3. Lentes (Voice Activation) ✨ *SOON*
 ---
 
 ## 🔍 Workflow's
@@ -22,12 +33,12 @@ Here is some workflow's that I made just for let you know how it work 😁
 ![Workflow](Notes/workflow.png)
 ### 🛠️ Fully Native Memory SYS
 ![Memoru](Notes/workflow22.png)
-### ⚡ Reconnect Rate Limit (2 Mins limit to infinit workflow)
+### ⚡ Reconnect Rate Limit (2 Mins limit to infinit workflow) (Gemini realesed a new SYS for reconnections, but I should keep using my own design, because gemini dont give good documentation.)
 ![reconnecy](Notes/workflow21.png)
 
 ---
 
-## 📂 Estructura del Proyecto
+## 📂 Repository structure
 ```
 📦 V1.1.9
 ├── 📁 Notes              # Documentación y referencias
@@ -55,6 +66,15 @@ Here is some workflow's that I made just for let you know how it work 😁
 └── 📜 requirements.txt
 ```
 ---
+
+## Workflow's Used and Develop time 
+
+| System | Problem Description | Workflow Description | Time Used |
+|---|---|---|---|
+| Re-connection + Memory |  Lack of native history context saving. |  Implemented a function to save and retrieve history context using model instructions. |  15 Days, 30 Hours |
+| UI |  Electron UI incompatible with current backend. TkInter and PyQt were too basic. |  Developed an attractive CMD ASCII UI using Colorama. |  5 Days, 7 Hours |
+| Modularization |  *2700 Lines of code, that make the coding IMPOSSIBLE.* |  *Finnaly, i decided modularize the code, with an advanced structure of folders and stuff, it was so hard, I litteraly re-make all the code by zero* |  10 Days, 27 Hours |
+| Language Code | It was a hearth hurt that the voice didnt sound good in spanish, and when I finnaly got the API implement, A lot of pydantic errors | *I solve it, by found an error with the class name deprected to discard, soon. I was using it so i can't pass the parameter language_code "" finnaly i solved it* | 10 Days, 11 Hours |
 ## Notes
 ### 📸 Papers that I made during develop phase
 
@@ -95,6 +115,6 @@ A continuación, algunas imágenes relacionadas con el proyecto:
 ---
 
 ## ⚖️ Licencia
-🚫 **Proyecto Privado** – Todos los derechos reservados.
+🚫 **READ LICENSE BEFORE USE** – READ LICENSE BEFORE USE
 
 ---
