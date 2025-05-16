@@ -6,13 +6,13 @@ Gemini API Real-Time, future glasses with built-in AI
 
 | Note Subject | Note Description | Year Wrote |
 |---|---|---|
-| Motivation | Valentina Werle (Werle) motivated the project and the addition of psychologist mode. (she and a friend told me the idea) | 2025 |
-| Project Timeline | The project took 3 months of coding + 1 month of investigations. | 2025 |
-| Development | The project was developed alone, without any human help. | 2025 |
-| Language | The author's native language is Spanish, but they also dominate English. (Written for future reference on English level in 2025) | 2025 |
-| Priorities | I'am prioritized low-cost + efficiency over ease of software. | 2025 |
-| Contribution | I'am open to contributions to Open Source projects. | 2025 |
-| Time Spent | 4 Month's Aproximated Time | 2025 |
+| Motivation | Valentina Werle (Werle) motivated the project and the addition of psychologist mode. (she and a friend told me the idea) 🌹 | 2025 |
+| Project Timeline | The project took 3 months of coding + 1 month of investigations. ✨ | 2025 |
+| Development | The project was developed alone, without any human help. 😉 | 2025 |
+| Language | The author's native language is Spanish, but they also dominate English. (Written for future reference on English level in 2025) 🧇 | 2025 |
+| Priorities | I'am prioritized low-cost + efficiency over ease of software. 🔱 | 2025 |
+| Contribution | I'am open to contributions to Open Source projects. 💫 | 2025 |
+| Time Spent | 4 Month's Aproximated Time 💦 | 2025 |
 ---
 
 ## 📌 Características
@@ -67,7 +67,7 @@ Here is some workflow's that I made just for let you know how it work 😁
 ```
 ---
 
-## Workflow's Used and Develop time 
+## Workflow's Used and Develop time ✴
 
 | System | Problem Description | Workflow Description | Time Used |
 |---|---|---|---|
