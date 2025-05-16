@@ -70,11 +70,12 @@ Here is some workflow's that I made just for let you know how it work 😁
 ## Workflow's Used and Develop time ✴
 
 | System | Problem Description | Workflow Description | Time Used |
-|---|---|---|---|
-| Re-connection + Memory |  Lack of native history context saving. |  Implemented a function to save and retrieve history context using model instructions. |  15 Days, 30 Hours |
-| UI |  Electron UI incompatible with current backend. TkInter and PyQt were too basic. |  Developed an attractive CMD ASCII UI using Colorama. |  5 Days, 7 Hours |
-| Modularization |  *2700 Lines of code, that make the coding IMPOSSIBLE.* |  *Finnaly, i decided modularize the code, with an advanced structure of folders and stuff, it was so hard, I litteraly re-make all the code by zero* |  10 Days, 27 Hours |
-| Language Code | It was a hearth hurt that the voice didnt sound good in spanish, and when I finnaly got the API implement, A lot of pydantic errors | *I solve it, by found an error with the class name deprected to discard, soon. I was using it so i can't pass the parameter language_code "" finnaly i solved it* | 10 Days, 11 Hours |
+| --- | --- | --- | --- |
+| Re-connection + Memory | 💾 Lack of native history context saving. | ⚙️ Implemented a function to save and retrieve history context using model instructions. | 15 Days, 30 Hours |
+| UI | 🖥️ Electron UI incompatible with current backend. TkInter and PyQt were too basic. | 🎨 Developed an attractive CMD ASCII UI using Colorama. | 5 Days, 7 Hours |
+| Modularization | 🧱 2700 Lines of code, that make the coding IMPOSSIBLE. | 📂 Finnaly, i decided modularize the code, with an advanced structure of folders and stuff, it was so hard, I litteraly re-make all the code by zero | 10 Days, 27 Hours |
+| Language Code | 🗣️ It was a hearth hurt that the voice didnt sound good in spanish, and when I finnaly got the API implement, A lot of pydantic errors | 🐛 I solve it, by found an error with the class name deprected to discard, soon. I was using it so i can't pass the parameter language_code "" finnaly i solved it | 10 Days, 11 Hours |
+
 ## Notes
 ### 📸 Papers that I made during develop phase
 
