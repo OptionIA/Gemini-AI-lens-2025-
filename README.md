@@ -100,21 +100,29 @@ A continuación, algunas imágenes relacionadas con el proyecto:
 
 ---
 
-## 🚀 How to use
-1. Clonar el repositorio:
-   ```bash
-   git clone https://github.com/OptionIA/Gemini-AI-lens-2025-/tree/main
-   ```
-2. Instalar dependencias:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Ejecutar el programa:
-   ```bash
-   python Code_Source/exe.py # Change folder name, due mayus
-   ```
+🚀 How to use
 
----
+1. Clone the repository:
+
+```bash
+git clone https://github.com/OptionIA/Gemini-AI-lens-2025-/tree/main
+```
+
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the program:
+
+```bash
+python Code_Source/exe.py # Change folder name, due mayus
+```
+
+4. Go to configuration and update your gemini api keys:
+
+5. Start the mode to use
 
 ## ⚖️ Licencia
 🚫 **READ LICENSE BEFORE USE** – READ LICENSE BEFORE USE
